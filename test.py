@@ -39,7 +39,7 @@ if __name__ == "__main__":
     plt.savefig('images/test_' + label + '.eps')
     plt.show()
 
-    lstm_model, lstm_history = lstm(train_df, val_df, input_steps, output_steps, epochs=20)
+    lstm_model, lstm_history = lstm(train_df, val_df, input_steps, output_steps)
 
     plt.plot(lstm_history.history['loss'])
     plt.plot(lstm_history.history['val_loss'])

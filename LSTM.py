@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 
 
-def make_dataset(data, input_steps, output_steps, label, batch_size=64):
+def make_dataset(data, input_steps, output_steps, label, batch_size=32):
     inputs = data[:-output_steps]
     targets = np.lib.stride_tricks.sliding_window_view(data[[label]][input_steps:],
                                                        output_steps,
@@ -14,7 +14,7 @@ def make_dataset(data, input_steps, output_steps, label, batch_size=64):
                                                         shuffle=True)
 
 
-def lstm(train_df, val_df, input_steps, output_steps, label='y', lstm_units=32, epochs=20):
+def lstm(train_df, val_df, input_steps, output_steps, label='y', lstm_units=32, epochs=20, batch_size=32):
     multi_lstm_model = tf.keras.Sequential([
         # Shape [batch, time, features] => [batch, lstm_units].
         # Adding more `lstm_units` just overfits more quickly.
@@ -27,8 +27,12 @@ def lstm(train_df, val_df, input_steps, output_steps, label='y', lstm_units=32, 
     early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
                                                       patience=3,
                                                       mode='min')
-    history = multi_lstm_model.fit(make_dataset(train_df, input_steps, output_steps, label),
+    model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath='models/checkpoints_' + label,
+                                                                   save_best_only=True,
+                                                                   mode='min')
+    history = multi_lstm_model.fit(make_dataset(train_df, input_steps, output_steps, label, batch_size),
                                    epochs=epochs,
-                                   validation_data=make_dataset(val_df, input_steps, output_steps, label),
-                                   callbacks=[early_stopping])
+                                   validation_data=make_dataset(val_df, input_steps, output_steps, label, batch_size),
+                                   callbacks=[early_stopping, model_checkpoint_callback])
+    multi_lstm_model.save('models/model_' + label)
     return multi_lstm_model, history
