@@ -29,8 +29,7 @@ def fft_analysis(df, label='y', n_per_day=1):
     plt.show()
 
 
-def split(df, input_steps, output_steps):
-    val_size = int(len(df) / 10)
+def split(df, input_steps, output_steps, val_size):
     return df[:-output_steps - val_size + input_steps], \
            df[-output_steps - val_size: -output_steps],\
            df[-input_steps - output_steps:]
@@ -42,15 +41,3 @@ def normalize(train_df, val_df, test_df):
     return (train_df - train_mean) / train_std,\
            (val_df - train_mean) / train_std,\
            (test_df - train_mean) / train_std
-
-
-def make_dataset(data, input_steps, output_steps, label, batch_size):
-    inputs = data[:-output_steps]
-    targets = np.lib.stride_tricks.sliding_window_view(data[[label]][input_steps:],
-                                                       output_steps,
-                                                       axis=0).transpose((0, 2, 1))
-    return tf.keras.utils.timeseries_dataset_from_array(inputs,
-                                                        np.array(targets),
-                                                        input_steps,
-                                                        batch_size=batch_size,
-                                                        shuffle=True)
