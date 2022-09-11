@@ -54,7 +54,8 @@ if __name__ == "__main__":
     result = test_df[[label]][-output_steps:]
     result[label + ' (LSTM)'] = lstm_model.predict(make_dataset(test_df, input_steps, output_steps, label))[0]
     result.plot()
-    plt.savefig('images/predicted_' + label + '.eps')
+    plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (LSTM)'])}")
+    plt.savefig('images/prediction_LSTM_' + label + '.eps')
     plt.show()
     print(f"test_mean_absolute_error: {mean_absolute_error(result[label], result[label + ' (LSTM)'])}")
 
@@ -83,13 +84,14 @@ if __name__ == "__main__":
 
     sxmodel = pm.auto_arima(train_df[[label]],
                             X=train_df.loc[:, train_df.columns != label],
-                            m=output_steps,
+                            m=12,
                             suppress_warnings=True,
                             trace=True)
     sxmodel.summary()
 
-    test_df[label + ' (ARIMAX)'] = sxmodel.predict(output_steps, test_df.loc[:, test_df.columns != label])
-    test_df.plot()
-    plt.savefig('sx_predict_' + label + '.eps')
+    result = test_df[[label]][:]
+    result[label + ' (ARIMAX)'] = sxmodel.predict(output_steps, test_df.loc[:, test_df.columns != label])
+    result.plot()
+    plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (ARIMAX)'])}")
+    plt.savefig('images/prediction_ARIMAX_' + label + '.eps')
     plt.show()
-    print(f"test_mean_absolute_error: {mean_absolute_error(test_df[label], test_df[label + ' (ARIMAX)'])}")
