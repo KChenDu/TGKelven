@@ -1,14 +1,18 @@
 from util import *
 from LSTM import *
+from ARIMA import *
 from sklearn.metrics import mean_absolute_error
+
 
 if __name__ == "__main__":
     label = 'T (degC)'
 
     df = pd.read_csv('jena_climate_2009_2016.csv')
     # Slice [start:stop:step], starting from index 5 take every 6th record.
-    df = df[5::6]
+    # one measure 6 days / 5 measures a month
+    df = df[5::6 * 24 * 30]
     df.index = pd.to_datetime(df.pop('Date Time'), format='%d.%m.%Y %H:%M:%S')
+
 
     wv = df['wv (m/s)']
     bad_wv = wv == -9999.0
@@ -32,64 +36,59 @@ if __name__ == "__main__":
     df['max Wx'] = max_wv * np.cos(wd_rad)
     df['max Wy'] = max_wv * np.sin(wd_rad)
 
-    fft_analysis(df, label, 24)
+    df = df.resample('1M').mean().interpolate()
 
-    input_steps = 183 * 24
-    output_steps = 61 * 24
+    fft_analysis(df, label, 1 / 30)
 
-    train_df, val_df, test_df = split(df, input_steps, output_steps, int(len(df) / 10))
+    input_steps = 24
+    output_steps = 12
+
+    train_df, val_df, test_df = split(df, input_steps, output_steps, 0.5)
     train_df, val_df, test_df = normalize(train_df, val_df, test_df)
 
-    phase = train_df.index.map(pd.Timestamp.timestamp) * np.pi / 12 / 60 / 60
-    train_df['day sin'] = np.sin(phase)
-    train_df['day cos'] = np.cos(phase)
-    phase /= 365.2425
-    train_df['year sin'] = np.sin(phase)
-    train_df['year cos'] = np.cos(phase)
+    train_df = add_trigonometric_input(train_df)
     # train_df[:24].plot()
     # plt.savefig('images/train_' + label + '.eps')
     # plt.show()
 
-    phase = val_df.index.map(pd.Timestamp.timestamp) * np.pi / 12 / 60 / 60
-    val_df['day sin'] = np.sin(phase)
-    val_df['day cos'] = np.cos(phase)
-    phase /= 365.2425
-    val_df['year sin'] = np.sin(phase)
-    val_df['year cos'] = np.cos(phase)
+    val_df = add_trigonometric_input(val_df)
     # val_df[:24].plot()
     # plt.savefig('images/val_' + label + '.eps')
     # plt.show()
 
-    phase = test_df.index.map(pd.Timestamp.timestamp) * np.pi / 12 / 60 / 60
-    test_df['day sin'] = np.sin(phase)
-    test_df['day cos'] = np.cos(phase)
-    phase /= 365.2425
-    test_df['year sin'] = np.sin(phase)
-    test_df['year cos'] = np.cos(phase)
+    test_df = add_trigonometric_input(test_df)
     # test_df[:24].plot()
     # plt.savefig('images/test_' + label + '.eps')
     # plt.show()
 
-    batch_size = 128
-    # lstm_model, lstm_history = lstm(train_df, val_df, input_steps, output_steps, label, 128, 20)
-    lstm_model, lstm_history = lstm(train_df, val_df, input_steps, output_steps, label, 32, 1, batch_size)
-
-    plt.plot(lstm_history.history['loss'])
-    plt.plot(lstm_history.history['val_loss'])
-    plt.title('model loss')
-    plt.ylabel('loss')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'validation'])
-    plt.savefig('images/history_' + label + '.eps')
-    plt.show()
+    batch_size = 32
+    lstm = LSTM(train_df, val_df, input_steps, output_steps, label, epochs=50, batch_size=batch_size)
 
     result = test_df[[label]][-output_steps:]
-    result[label + ' (LSTM)'] = lstm_model.predict(make_dataset(test_df,
-                                                                input_steps,
-                                                                output_steps,
-                                                                label,
-                                                                batch_size))[0]
+    result[label + ' (LSTM)'] = lstm.predict(test_df)
     result.plot()
-    plt.savefig('images/predicted_' + label + '.eps')
+    plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (LSTM)'])}")
+    plt.savefig('images/prediction_LSTM_' + label + '.eps')
     plt.show()
     print(f"test_mean_absolute_error: {mean_absolute_error(result[label], result[label + ' (LSTM)'])}")
+
+    train_df = df[:-output_steps]
+    test_df = df[-output_steps:]
+
+    train_mean = train_df.mean()
+    train_std = train_df.std()
+
+    train_df = (train_df - train_mean) / train_std
+    test_df = (test_df - train_mean) / train_std
+
+    train_df = add_trigonometric_input(train_df)
+    test_df = add_trigonometric_input(test_df)
+
+    arima = ARIMA(train_df, label, 12)
+
+    result = test_df[[label]][:]
+    result[label + ' (ARIMAX)'] = arima.predict(test_df, output_steps)
+    result.plot()
+    plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (ARIMAX)'])}")
+    plt.savefig('images/prediction_ARIMAX_' + label + '.eps')
+    plt.show()
