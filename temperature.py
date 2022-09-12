@@ -37,6 +37,7 @@ if __name__ == "__main__":
     df['max Wy'] = max_wv * np.sin(wd_rad)
 
     df = df.resample('1M').mean().interpolate()
+    df = df[[label]]
 
     fft_analysis(df, label, 1 / 30)
 

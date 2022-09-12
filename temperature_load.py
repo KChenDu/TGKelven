@@ -1,14 +1,17 @@
 from util import *
 from LSTM import *
 from sklearn.metrics import mean_absolute_error
+import pickle
 
 if __name__ == "__main__":
     label = 'T (degC)'
 
     df = pd.read_csv('jena_climate_2009_2016.csv')
     # Slice [start:stop:step], starting from index 5 take every 6th record.
-    df = df[5::6]
+    # one measure 6 days / 5 measures a month
+    df = df[5::6 * 24 * 30]
     df.index = pd.to_datetime(df.pop('Date Time'), format='%d.%m.%Y %H:%M:%S')
+
 
     wv = df['wv (m/s)']
     bad_wv = wv == -9999.0
@@ -32,31 +35,45 @@ if __name__ == "__main__":
     df['max Wx'] = max_wv * np.cos(wd_rad)
     df['max Wy'] = max_wv * np.sin(wd_rad)
 
-    input_steps = 183 * 24
-    output_steps = 61 * 24
+    df = df.resample('1M').mean().interpolate()
+    df = df[[label]]
 
-    train_df, val_df, test_df = split(df, input_steps, output_steps, int(len(df) / 10))
-    train_df, val_df, test_df = normalize(train_df, val_df, test_df)
+    fft_analysis(df, label, 1 / 30)
 
-    phase = test_df.index.map(pd.Timestamp.timestamp) * np.pi / 12 / 60 / 60
-    test_df['day sin'] = np.sin(phase)
-    test_df['day cos'] = np.cos(phase)
-    phase /= 365.2425
-    test_df['year sin'] = np.sin(phase)
-    test_df['year cos'] = np.cos(phase)
-    # test_df[:24].plot()
-    # plt.savefig('images/test_' + label + '.eps')
-    # plt.show()
+    input_steps = 24
+    output_steps = 12
 
-    lstm_model = tf.keras.models.load_model('models/model_' + label)
+    train_df, val_df, test_df = split(df, input_steps, output_steps, 0.5)
+    _, _, test_df = normalize(train_df, val_df, test_df)
 
-    result = test_df[[label]][-output_steps:]
-    result[label + ' (LSTM)'] = lstm_model.predict(make_dataset(test_df,
-                                                                input_steps,
-                                                                output_steps,
-                                                                label,
-                                                                128))[0]
-    result.plot()
-    plt.savefig('images/predicted_' + label + '.eps')
+    test_df = add_trigonometric_input(test_df)
+    test_df.plot()
+    plt.savefig('images/test_LSTM_' + label + '.eps')
     plt.show()
-    print(f"test_mean_absolute_error: {mean_absolute_error(result[label], result[label + ' (LSTM)'])}")
+
+    batch_size = 32
+
+    lstm_model = tf.keras.models.load_model('models/model_LSTM_' + label)
+    result = test_df[[label]][-output_steps:]
+    result[label + ' (LSTM)'] = lstm_model.predict(make_dataset(test_df, input_steps, output_steps, label))[0]
+    result.plot()
+    plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (LSTM)'])}")
+    plt.savefig('images/prediction_LSTM_' + label + '.eps')
+    plt.show()
+
+    test_df = df[-output_steps:]
+    test_df = (test_df - train_df.mean()) / train_df.std()
+    test_df = add_trigonometric_input(test_df)
+    test_df.plot()
+    plt.savefig('images/test_ARIMAX_' + label + '.eps')
+    plt.show()
+
+    result = test_df[[label]][:]
+
+    with open('models/model_ARIMAX_' + label + '.pkl', 'rb') as pkl:
+        result[label + ' (ARIMAX)'] = pickle.load(pkl).predict(output_steps, test_df.loc[:, test_df.columns != label])
+
+    result.plot()
+    plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (ARIMAX)'])}")
+    plt.savefig('images/prediction_ARIMAX_' + label + '.eps')
+    plt.show()

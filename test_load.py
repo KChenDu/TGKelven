@@ -1,31 +1,51 @@
 from util import *
 from LSTM import *
 from sklearn.metrics import mean_absolute_error
+import pickle
 
 if __name__ == "__main__":
     label = 'y'
 
-    df = get_test_curve(mean=150, amplitude=100)
+    df = get_test_curve(480, 150, 100)
     df.plot()
-
-    input_steps = 183
-    output_steps = 30
-
-    train_df, val_df, test_df = split(df, input_steps, output_steps, int(len(df) / 10))
-    train_df, val_df, test_df = normalize(train_df, val_df, test_df)
-
-    phase = test_df.index.map(pd.Timestamp.timestamp) * np.pi / 365.2425 / 12 / 60 / 60
-    test_df['sin'] = np.sin(phase)
-    test_df['cos'] = np.cos(phase)
-    test_df.plot()
-    plt.savefig('images/test_' + label + '.eps')
+    plt.savefig('images/' + label + '.eps')
     plt.show()
 
-    lstm_model = tf.keras.models.load_model('models/model_' + label)
+    fft_analysis(df, samples_per_day=1 / 30.437)
+
+    input_steps = 36
+    output_steps = 12
+
+    train_df, val_df, test_df = split(df, input_steps, output_steps)
+    _, _, test_df = normalize(train_df, val_df, test_df)
+
+    test_df = add_trigonometric_input(test_df)
+    test_df.plot()
+    plt.savefig('images/test_LSTM_' + label + '.eps')
+    plt.show()
+
+    lstm_model = tf.keras.models.load_model('models/model_LSTM_' + label)
     result = test_df[[label]][-output_steps:]
     result[label + ' (LSTM)'] = lstm_model.predict(make_dataset(test_df, input_steps, output_steps, label))[0]
     result.plot()
-    plt.savefig('images/predicted_' + label + '.eps')
+    plt.title(f"test_mean_absolute_error: {mean_absolute_error(result[label], result[label + ' (LSTM)'])}")
+    plt.savefig('images/predicted_LSTM_' + label + '.eps')
     plt.show()
 
-    print(f"test_mean_absolute_error: {mean_absolute_error(result[label], result[label + ' (LSTM)'])}")
+    train_df = df[:-output_steps]
+    test_df = df[-output_steps:]
+    test_df = (test_df - train_df.mean()) / train_df.std()
+    test_df = add_trigonometric_input(test_df)
+    test_df.plot()
+    plt.savefig('images/test_ARIMA_' + label + '.eps')
+    plt.show()
+
+    result = test_df[[label]][:]
+
+    with open('models/model_ARIMAX_' + label + '.pkl', 'rb') as pkl:
+        result[label + ' (ARIMAX)'] = pickle.load(pkl).predict(output_steps, test_df.loc[:, test_df.columns != label])
+
+    result.plot()
+    plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (ARIMAX)'])}")
+    plt.savefig('images/prediction_ARIMAX_' + label + '.eps')
+    plt.show()

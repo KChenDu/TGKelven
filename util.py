@@ -21,7 +21,7 @@ def fft_analysis(df, label='y', samples_per_day=1):
     f_per_year = f_per_dataset / years_per_dataset
     plt.step(f_per_year, np.abs(fft))
     plt.xscale('log')
-    plt.ylim(0, 50000)
+    plt.ylim(0, 1000)
     plt.xlim([0.1, max(plt.xlim())])
     plt.xticks([1, 30.437, 365.2524], labels=['1/year', '1/month', '1/day'])
     plt.xlabel('Frequency (log scale)')

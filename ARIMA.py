@@ -10,7 +10,7 @@ class ARIMA:
                               suppress_warnings=True,
                               trace=True)
         model.summary()
-        with open('models/model_ARIMA_' + label + '.pkl', 'wb') as pkl:
+        with open('models/model_ARIMAX_' + label + '.pkl', 'wb') as pkl:
             pickle.dump(model, pkl)
         self.model = model
         self.label = label
