@@ -13,7 +13,7 @@ def get_test_curve(length=120, mean=0, amplitude=10, period=12, freq='M', noise=
     return df
 
 
-def fft_analysis(df, label='y', samples_per_day=1):
+def fft_analysis(df, label='y', samples_per_day=1.):
     fft = tf.signal.rfft(df[label])
     f_per_dataset = np.arange(0, len(fft))
     n_samples = len(df[label])

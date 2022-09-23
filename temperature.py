@@ -48,19 +48,19 @@ if __name__ == "__main__":
     train_df, val_df, test_df = normalize(train_df, val_df, test_df)
 
     train_df = add_trigonometric_input(train_df)
-    # train_df[:24].plot()
-    # plt.savefig('images/train_' + label + '.eps')
-    # plt.show()
+    train_df.plot()
+    plt.savefig('images/train_LSTM_' + label + '.eps')
+    plt.show()
 
     val_df = add_trigonometric_input(val_df)
-    # val_df[:24].plot()
-    # plt.savefig('images/val_' + label + '.eps')
-    # plt.show()
+    val_df.plot()
+    plt.savefig('images/val_LSTM_' + label + '.eps')
+    plt.show()
 
     test_df = add_trigonometric_input(test_df)
-    # test_df[:24].plot()
-    # plt.savefig('images/test_' + label + '.eps')
-    # plt.show()
+    test_df.plot()
+    plt.savefig('images/test_LSTM_' + label + '.eps')
+    plt.show()
 
     batch_size = 32
     lstm = LSTM(train_df, val_df, input_steps, output_steps, label, epochs=50, batch_size=batch_size)
