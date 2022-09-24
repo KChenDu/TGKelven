@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from util import save_figure
 
 
 def make_dataset(data, input_steps, output_steps, label, batch_size=32):
@@ -50,8 +51,7 @@ class LSTM:
         plt.ylabel('loss')
         plt.xlabel('epoch')
         plt.legend(['train', 'validation'])
-        plt.savefig('images/history_LSTM_' + self.label + '.eps')
-        plt.show()
+        save_figure('history_LSTM_' + self.label)
 
     def predict(self, test_df):
         return self.model.predict(make_dataset(test_df, self.input_steps, self.output_steps, self.label))[0]

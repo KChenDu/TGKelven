@@ -8,8 +8,7 @@ if __name__ == "__main__":
 
     df = get_test_curve(480, 150, 100)
     df.plot()
-    plt.savefig('images/' + label + '.eps')
-    plt.show()
+    save_figure(label)
 
     fft_analysis(df, samples_per_day=1 / 30.437)
 
@@ -17,22 +16,19 @@ if __name__ == "__main__":
     output_steps = 12
 
     train_df, val_df, test_df = split(df, input_steps, output_steps)
-    train_df, val_df, test_df = normalize(train_df, val_df, test_df)
+    train_df, val_df, test_df = normalize(train_df, test_df, val_df)
 
     train_df = add_trigonometric_input(train_df)
     train_df.plot()
-    plt.savefig('images/train_LSTM_' + label + '.eps')
-    plt.show()
+    save_figure('train_LSTM_' + label)
 
     val_df = add_trigonometric_input(val_df)
     val_df.plot()
-    plt.savefig('images/val_LSTM_' + label + '.eps')
-    plt.show()
+    save_figure('val_LSTM_' + label)
 
     test_df = add_trigonometric_input(test_df)
     test_df.plot()
-    plt.savefig('images/test_LSTM_' + label + '.eps')
-    plt.show()
+    save_figure('test_LSTM_' + label)
 
     lstm = LSTM(train_df, val_df, input_steps, output_steps)
     lstm.show_history()
@@ -41,27 +37,18 @@ if __name__ == "__main__":
     result[label + ' (LSTM)'] = lstm.predict(test_df)
     result.plot()
     plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (LSTM)'])}")
-    plt.savefig('images/prediction_LSTM_' + label + '.eps')
-    plt.show()
+    save_figure('prediction_LSTM_' + label)
 
-    train_df = df[:-output_steps]
-    test_df = df[-output_steps:]
-
-    train_mean = train_df.mean()
-    train_std = train_df.std()
-
-    train_df = (train_df - train_mean) / train_std
-    test_df = (test_df - train_mean) / train_std
+    train_df, test_df = simple_split(df, output_steps, 0.)
+    train_df, test_df = normalize(train_df, test_df)
 
     train_df = add_trigonometric_input(train_df)
     train_df.plot()
-    plt.savefig('images/train_ARIMAX_' + label + '.eps')
-    plt.show()
+    save_figure('train_ARIMAX_' + label)
 
     test_df = add_trigonometric_input(test_df)
     test_df.plot()
-    plt.savefig('images/test_ARIMAX_' + label + '.eps')
-    plt.show()
+    save_figure('test_ARIMAX_' + label)
 
     arima = ARIMA(train_df)
 
@@ -69,5 +56,4 @@ if __name__ == "__main__":
     result[label + ' (ARIMAX)'] = arima.predict(test_df, output_steps)
     result.plot()
     plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (ARIMAX)'])}")
-    plt.savefig('images/prediction_ARIMAX_' + label + '.eps')
-    plt.show()
+    save_figure('prediction_ARIMAX_' + label)

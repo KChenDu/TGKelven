@@ -25,7 +25,7 @@ class NARX(nn.Module):
 class NARMAX:
     def __init__(self, train_df, val_df, label='y', xlag=2, ylag=2, polynomial_degree=2):
         basis_function = Polynomial(polynomial_degree)
-        lag = range(1, xlag + 1)
+        lag = list(range(1, xlag + 1))
         xlags = []
         n = train_df.shape[1] - 1
         for i in range(n):
