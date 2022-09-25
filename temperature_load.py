@@ -1,5 +1,5 @@
 from util import *
-from LSTM import *
+from NN.LSTM import *
 from sklearn.metrics import mean_absolute_error
 import pickle
 

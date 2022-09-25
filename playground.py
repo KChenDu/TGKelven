@@ -1,5 +1,5 @@
 from util import *
-from NARX import NARMAX
+from NN.NARX import NARMAX
 
 label = 'y'
 
@@ -10,7 +10,7 @@ save_figure(label)
 fft_analysis(df, samples_per_day=1 / 30.437)
 
 output_steps = 12
-train_df, val_df, test_df = simple_split(df, output_steps)
+train_df, val_df, test_df = narx_split(df, output_steps)
 train_df, val_df, test_df = normalize(train_df, test_df, val_df)
 
 train_df = add_trigonometric_input(train_df)
@@ -25,7 +25,7 @@ test_df = add_trigonometric_input(test_df)
 test_df.plot()
 save_figure('test_NARX_' + label)
 
-narmax = NARMAX(train_df, val_df)
+narmax = NARMAX(train_df, val_df, xlag=2, ylag=2)
 
 result = test_df[[label]]
 result[label + ' (NARX)'] = narmax.predict(test_df)

@@ -1,6 +1,7 @@
 from util import *
-from LSTM import *
-from ARIMA import *
+from NN.LSTM import LSTM
+from NN.ARIMA import ARIMA
+from NN.NARX import NARMAX
 from sklearn.metrics import mean_absolute_error
 
 if __name__ == "__main__":
@@ -14,8 +15,8 @@ if __name__ == "__main__":
 
     input_steps = 36
     output_steps = 12
-
-    train_df, val_df, test_df = split(df, input_steps, output_steps)
+    '''
+    train_df, val_df, test_df = lstm_split(df, input_steps, output_steps)
     train_df, val_df, test_df = normalize(train_df, test_df, val_df)
 
     train_df = add_trigonometric_input(train_df)
@@ -39,7 +40,7 @@ if __name__ == "__main__":
     plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (LSTM)'])}")
     save_figure('prediction_LSTM_' + label)
 
-    train_df, test_df = simple_split(df, output_steps, 0.)
+    train_df, test_df = arima_split(df, output_steps)
     train_df, test_df = normalize(train_df, test_df)
 
     train_df = add_trigonometric_input(train_df)
@@ -57,3 +58,29 @@ if __name__ == "__main__":
     result.plot()
     plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (ARIMAX)'])}")
     save_figure('prediction_ARIMAX_' + label)
+    '''
+    xlag = 2
+
+    train_df, val_df, test_df = narx_split(df, output_steps, xlag=xlag)
+    train_df, val_df, test_df = normalize(train_df, test_df, val_df)
+
+    train_df = add_trigonometric_input(train_df)
+    train_df.plot()
+    save_figure('train_NARX_' + label)
+
+    val_df = add_trigonometric_input(val_df)
+    val_df.plot()
+    save_figure('val_NARX_' + label)
+
+    test_df = add_trigonometric_input(test_df)
+    test_df.plot()
+    save_figure('test_NARX_' + label)
+
+    narmax = NARMAX(train_df, val_df, xlag=xlag)
+
+    result = test_df[[label]]
+    result[label + ' (NARX)'] = narmax.predict(test_df)
+    result = result.iloc[xlag:]
+    result.plot()
+    plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (NARX)'])}")
+    save_figure('prediction_NARX_' + label)

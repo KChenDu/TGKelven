@@ -37,21 +37,25 @@ def fft_analysis(df, label='y', samples_per_day=1.):
     save_figure('fft_' + label)
 
 
-def split(df, input_steps, output_steps, val_rate=0.1):
+def lstm_split(df, input_steps, output_steps, val_rate=0.1):
     val_size = int(val_rate * len(df))
     return df[:-output_steps - val_size + input_steps], \
            df[-output_steps - val_size: -output_steps], \
            df[-input_steps - output_steps:]
 
 
-def simple_split(df, output_steps, val_rate=0.1):
+def arima_split(df, output_steps):
+    return df[:-output_steps], df[-output_steps:]
+
+
+def narx_split(df, output_steps, val_rate=0.1, xlag=2):
     val_size = int(val_rate * len(df))
     if val_size < 1:
         return df[:-output_steps], \
                df[-output_steps:]
     return df[:-output_steps - val_size], \
            df[-output_steps - val_size: -output_steps], \
-           df[-output_steps:]
+           df[-xlag - output_steps:]
 
 
 def normalize(train_df, test_df, val_df=None):
