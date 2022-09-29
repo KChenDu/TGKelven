@@ -52,10 +52,22 @@ def narx_split(df, output_steps, val_rate=0.1, xlag=2):
     val_size = int(val_rate * len(df))
     if val_size < 1:
         return df[:-output_steps], \
-               df[-output_steps:]
+               df[-xlag - output_steps:]
     return df[:-output_steps - val_size], \
-           df[-output_steps - val_size: -output_steps], \
+           df[-xlag - val_size - output_steps: -output_steps], \
            df[-xlag - output_steps:]
+
+
+class Normalizer:
+    def __init__(self, series):
+        self.mean = series.mean()
+        self.std = series.std()
+
+    def normalize(self, df):
+        return (df - self.mean) / self.std
+
+    def denormalize(self, df):
+        return df * self.std + self.mean
 
 
 def normalize(train_df, test_df, val_df=None):

@@ -43,13 +43,11 @@ if __name__ == "__main__":
     input_steps = 24
     output_steps = 12
 
-    train_df, val_df, test_df = split(df, input_steps, output_steps, 0.5)
-    _, _, test_df = normalize(train_df, val_df, test_df)
-
+    train_df, _, test_df = lstm_split(df, input_steps, output_steps, 0.5)
+    _, test_df = normalize(train_df, test_df)
     test_df = add_trigonometric_input(test_df)
     test_df.plot()
-    plt.savefig('images/test_LSTM_' + label + '.eps')
-    plt.show()
+    save_figure('test_LSTM_' + label)
 
     batch_size = 32
 
@@ -58,15 +56,13 @@ if __name__ == "__main__":
     result[label + ' (LSTM)'] = lstm_model.predict(make_dataset(test_df, input_steps, output_steps, label))[0]
     result.plot()
     plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (LSTM)'])}")
-    plt.savefig('images/prediction_LSTM_' + label + '.eps')
-    plt.show()
+    save_figure('prediction_LSTM_' + label)
 
-    test_df = df[-output_steps:]
-    test_df = (test_df - train_df.mean()) / train_df.std()
+    train_df, test_df = arima_split(df, output_steps)
+    _, test_df = normalize(train_df, test_df)
     test_df = add_trigonometric_input(test_df)
     test_df.plot()
-    plt.savefig('images/test_ARIMAX_' + label + '.eps')
-    plt.show()
+    save_figure('test_ARIMAX_' + label)
 
     result = test_df[[label]][:]
 
@@ -75,5 +71,4 @@ if __name__ == "__main__":
 
     result.plot()
     plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (ARIMAX)'])}")
-    plt.savefig('images/prediction_ARIMAX_' + label + '.eps')
-    plt.show()
+    save_figure('prediction_ARIMAX_' + label)

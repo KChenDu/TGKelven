@@ -3,7 +3,7 @@ import pickle
 
 
 class ARIMA:
-    def __init__(self, train_df, label='y', period=12):
+    def __init__(self, train_df, label='y', period=1):
         model = pm.auto_arima(train_df[[label]],
                               X=train_df.loc[:, train_df.columns != label],
                               m=period,

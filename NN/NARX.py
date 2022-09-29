@@ -2,7 +2,7 @@ from torch import nn
 from sysidentpy.basis_function import Polynomial
 from sysidentpy.neural_network import NARXNN
 from sysidentpy.utils.narmax_tools import regressor_code
-
+import torch
 
 class NARX(nn.Module):
     def __init__(self, n_features):
@@ -21,7 +21,7 @@ class NARX(nn.Module):
 
 
 class NARMAX:
-    def __init__(self, train_df, val_df, label='y', xlag=2, ylag=2, polynomial_degree=2):
+    def __init__(self, train_df, val_df=None, label='y', xlag=2, ylag=2, polynomial_degree=2):
         basis_function = Polynomial(polynomial_degree)
         lag = list(range(1, xlag + 1))
         xlags = []
@@ -40,13 +40,18 @@ class NARMAX:
                                                basis_function=basis_function).shape[0]),
                        optim_params={'betas': (0.9, 0.999),
                                      'eps': 1e-05})
-        self.model = model.fit(X=train_df.loc[:, train_df.columns != label].to_numpy(),
-                               y=train_df[[label]].to_numpy(),
-                               X_test=val_df.loc[:, val_df.columns != label].to_numpy(),
-                               y_test=val_df[[label]].to_numpy())
+        model.fit(X=train_df.loc[:, train_df.columns != label].to_numpy(),
+                  y=train_df[[label]].to_numpy(),
+                  X_test=val_df.loc[:, val_df.columns != label].to_numpy(),
+                  y_test=val_df[[label]].to_numpy())
+        torch.save(model.net.state_dict(), 'models/model_NARX_' + label + '.pt')
         self.label = label
+        self.model = model
 
     def predict(self, test_df):
         label = self.label
         return self.model.predict(X=test_df.loc[:, test_df.columns != label].to_numpy(),
-                                  y=test_df[[label]].to_numpy())
+                                  y=test_df[[label]].to_numpy()).flatten()
+
+    def load(self):
+        self.model.net.load_state_dict(torch.load('models/model_NARX_' + self.label + '.pt'))
