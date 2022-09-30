@@ -58,6 +58,10 @@ def narx_split(df, output_steps, val_rate=0.1, xlag=2):
            df[-xlag - output_steps:]
 
 
+def normalize(df):
+    return (df - df.mean()) / df.std()
+
+
 class Normalizer:
     def __init__(self, series):
         self.mean = series.mean()
@@ -68,17 +72,6 @@ class Normalizer:
 
     def denormalize(self, df):
         return df * self.std + self.mean
-
-
-def normalize(train_df, test_df, val_df=None):
-    train_mean = train_df.mean()
-    train_std = train_df.std()
-    if val_df is None:
-        return (train_df - train_mean) / train_std, \
-               (test_df - train_mean) / train_std
-    return (train_df - train_mean) / train_std, \
-           (val_df - train_mean) / train_std, \
-           (test_df - train_mean) / train_std
 
 
 def add_trigonometric_input(df, period='Y'):

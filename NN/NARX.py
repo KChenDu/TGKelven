@@ -24,10 +24,13 @@ class NARMAX:
     def __init__(self, train_df, val_df=None, label='y', xlag=2, ylag=2, polynomial_degree=2):
         basis_function = Polynomial(polynomial_degree)
         lag = list(range(1, xlag + 1))
-        xlags = []
         n = train_df.shape[1] - 1
-        for i in range(n):
-            xlags.append(lag)
+        if (n > 1):
+            xlags = []
+            for i in range(n):
+                xlags.append(lag)
+        else:
+            xlags = xlag
         model = NARXNN(xlag=xlags,
                        ylag=ylag,
                        basis_function=basis_function,

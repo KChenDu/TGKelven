@@ -6,14 +6,12 @@ from sklearn.metrics import mean_absolute_error
 
 
 if __name__ == "__main__":
-    label = 'T (degC)'
 
     df = pd.read_csv('jena_climate_2009_2016.csv')
     # Slice [start:stop:step], starting from index 5 take every 6th record.
     # one measure 6 days / 5 measures a month
-    df = df[5::6 * 24 * 30]
+    df = df[5::6 * 24 * 7]
     df.index = pd.to_datetime(df.pop('Date Time'), format='%d.%m.%Y %H:%M:%S')
-
 
     wv = df['wv (m/s)']
     bad_wv = wv == -9999.0
@@ -37,74 +35,125 @@ if __name__ == "__main__":
     df['max Wx'] = max_wv * np.cos(wd_rad)
     df['max Wy'] = max_wv * np.sin(wd_rad)
 
+    # Caution: Change this line when changes frequency
     df = df.resample('1M').mean().interpolate()
-    df = df[[label]]
 
-    fft_analysis(df, label, 1 / 30)
+    # Selection of columns
+    df = df[['T (degC)',
+             'p (mbar)',
+             'rh (%)',
+             'VPmax (mbar)',
+             'VPact (mbar)',
+             'rho (g/m**3)',
+             #'Wx',
+             #'Wy',
+             #'max Wx',
+             #'max Wy',
+             ]]
 
-    input_steps = 24
+    label = 'T (degC)'
+
+    df.plot()
+    save_figure(label)
+
+    fft_analysis(df, label, 1 / 30.437)  # Change this line when changes frequency
+
+    input_steps = 12
     output_steps = 12
 
-    train_df, val_df, test_df = lstm_split(df, input_steps, output_steps, 0.5)
-    train_df, val_df, test_df = normalize(train_df, test_df, val_df)
+    run = [
+        'lstm',
+        #'arima',
+        #'narx'
+    ]
 
-    train_df = add_trigonometric_input(train_df)
-    train_df.plot()
-    save_figure('train_LSTM_' + label)
+    normalizer = Normalizer(df[label][:-output_steps])
+    result = df[[label]][-output_steps * 10:]
 
-    val_df = add_trigonometric_input(val_df)
-    val_df.plot()
-    save_figure('val_LSTM_' + label)
+    if 'lstm' in run:
+        train_df, val_df, test_df = lstm_split(df, input_steps, output_steps, 0.3)
+        train_df = normalize(train_df)
+        train_df = add_trigonometric_input(train_df)
+        # train_df.plot()
+        # plt.show()
 
-    test_df = add_trigonometric_input(test_df)
-    test_df.plot()
-    save_figure('test_LSTM_' + label)
+        val_df = normalize(val_df)
+        val_df = add_trigonometric_input(val_df)
+        # val_df.plot()
+        # plt.show()
 
-    batch_size = 32
-    lstm = LSTM(train_df, val_df, input_steps, output_steps, label, epochs=50, batch_size=batch_size)
+        test_df = normalize(test_df)
+        test_df = add_trigonometric_input(test_df)
+        # test_df.plot()
+        # plt.show()
 
-    result = test_df[[label]][-output_steps:]
-    result[label + ' (LSTM)'] = lstm.predict(test_df)
+        lstm = LSTM(train_df, val_df, input_steps, output_steps, label, 64, 300)
+        lstm.show_history()
+
+        lstm_result = result[[label]]
+        output = pd.DataFrame({label + ' (LSTM)': lstm.predict(test_df)}, index=test_df[-output_steps:].index)
+        output = normalizer.denormalize(output)
+        lstm_result = lstm_result.join(output)
+        lstm_result.plot()
+        plt.title(f"mean absolute error: {mean_absolute_error(lstm_result[label][-output_steps:], output)}")
+        save_figure(label + '_LSTM_prediction')
+        result = result.join(output)
+
+    if 'arima' in run:
+        train_df, test_df = arima_split(df, output_steps)
+
+        train_df = normalize(train_df)
+        train_df = add_trigonometric_input(train_df)
+        # train_df.plot()
+        # plt.show()
+
+        test_df = normalize(test_df)
+        test_df = add_trigonometric_input(test_df)
+        # test_df.plot()
+        # plt.show()
+
+        arima = ARIMA(train_df, label, 12)  # Change this when changing frequency
+
+        arima_result = result[[label]]
+        output = pd.DataFrame({label + ' (ARIMAX)': arima.predict(test_df, output_steps)}, index=test_df[-output_steps:].index)
+        output = normalizer.denormalize(output)
+        arima_result = arima_result.join(output)
+        arima_result.plot()
+        plt.title(f"mean absolute error: {mean_absolute_error(arima_result[label][-output_steps:], output)}")
+        save_figure(label + '_ARIMAX_prediction')
+        result = result.join(output)
+
+    if 'narx' in run:
+        xlag = 4
+        ylag = xlag
+
+        train_df, val_df, test_df = narx_split(df, output_steps, val_rate=0.2, xlag=xlag)
+
+        train_df = normalize(train_df)
+        train_df = add_trigonometric_input(train_df)
+        # train_df.plot()
+        # plt.show()
+
+        val_df = normalize(val_df)
+        val_df = add_trigonometric_input(val_df)
+        # val_df.plot()
+        # plt.show()
+
+        test_df = normalize(test_df)
+        test_df = add_trigonometric_input(test_df)
+        # test_df.plot()
+        # plt.show()
+
+        narmax = NARMAX(train_df, val_df, label, xlag=xlag, ylag=ylag, polynomial_degree=3)
+
+        narx_result = result[[label]]
+        output = pd.DataFrame({label + ' (NARX)': narmax.predict(test_df)[-output_steps:]}, index=test_df[-output_steps:].index)
+        output = normalizer.denormalize(output)
+        narx_result = narx_result.join(output)
+        narx_result.plot()
+        plt.title(f"mean absolute error: {mean_absolute_error(narx_result[label][-output_steps:], output)}")
+        save_figure(label + '_NARX_prediction')
+        result = result.join(output)
+
     result.plot()
-    plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (LSTM)'])}")
-    save_figure('prediction_LSTM_' + label)
-
-    train_df, test_df = arima_split(df, output_steps)
-    train_df, test_df = normalize(train_df, test_df)
-
-    train_df = add_trigonometric_input(train_df)
-    test_df = add_trigonometric_input(test_df)
-
-    arima = ARIMA(train_df, label, 12)
-
-    result = test_df[[label]][:]
-    result[label + ' (ARIMAX)'] = arima.predict(test_df, output_steps)
-    result.plot()
-    plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (ARIMAX)'])}")
-    save_figure('prediction_ARIMAX_' + label)
-
-    xlag = 2
-
-    train_df, val_df, test_df = narx_split(df, output_steps, val_rate=0.2 , xlag=xlag)
-    train_df, val_df, test_df = normalize(train_df, test_df, val_df)
-
-    train_df = add_trigonometric_input(train_df)
-    train_df.plot()
-    save_figure('train_NARX_' + label)
-
-    val_df = add_trigonometric_input(val_df)
-    val_df.plot()
-    save_figure('val_NARX_' + label)
-
-    test_df = add_trigonometric_input(test_df)
-    test_df.plot()
-    save_figure('test_NARX_' + label)
-
-    narmax = NARMAX(train_df, val_df, label, xlag=xlag)
-
-    result = test_df[[label]]
-    result[label + ' (NARX)'] = narmax.predict(test_df)
-    result = result.iloc[xlag:]
-    result.plot()
-    plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (NARX)'])}")
-    save_figure('prediction_NARX_' + label)
+    save_figure(label + 'prediction_' + label)

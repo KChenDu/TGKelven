@@ -10,23 +10,24 @@ if __name__ == "__main__":
     yf.pdr_override()
 
     mktdata = pdr.get_data_yahoo("ERJ", start="2002-03-21")[['Adj Close']].rename(columns={'Adj Close': 'ERJ'})
+    mktdata = pdr.get_data_yahoo("PBR", start="2002-03-21")[['Adj Close']].rename(columns={'Adj Close': 'PBR'})
     mktdata['PBR'] = pdr.get_data_yahoo("PBR", start="2002-03-21")['Adj Close']
     mktdata['VALE'] = pdr.get_data_yahoo("VALE")['Adj Close']
 
     mktdata = mktdata.loc[mktdata.index.day_name() == 'Friday', :]
 
-    label = 'ERJ'
+    label = 'PBR'
 
     mktdata.plot()
     save_figure(label)
 
-    input_steps = 104
-    output_steps = 52
+    input_steps = 96
+    output_steps = 32
 
     run = [
         'lstm',
-        #'arima',
-        #'narx'
+        'arima',
+        'narx'
     ]
 
     normalizer = Normalizer(mktdata[label][:-output_steps])  # Caution: Use series input, not dataframe
@@ -75,8 +76,8 @@ if __name__ == "__main__":
         result = result.join(output)
 
     if 'narx' in run:
-        xlag = 9
-        ylag = 9
+        xlag = 6
+        ylag = xlag
 
         train_df, val_df, test_df = narx_split(mktdata, output_steps, val_rate=0.2, xlag=xlag)
         train_df = normalizer.normalize(train_df)
@@ -87,7 +88,7 @@ if __name__ == "__main__":
         # plt.show()
         test_df = normalizer.normalize(test_df)
 
-        narx = NARMAX(train_df, val_df, label, xlag=xlag, ylag=ylag, polynomial_degree=4)
+        narx = NARMAX(train_df, val_df, label, xlag=xlag, ylag=ylag, polynomial_degree=3)
 
         narx_result = result[[label]]
         output = pd.DataFrame({label + ' (NARX)': narx.predict(test_df)[-output_steps:]}, index=test_df[-output_steps:].index)
@@ -100,4 +101,3 @@ if __name__ == "__main__":
 
     result.plot()
     save_figure(label + '_prediction')
-    plt.show()

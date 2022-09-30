@@ -28,7 +28,7 @@ class LSTM:
                       optimizer=tf.keras.optimizers.Adam(),
                       metrics=[tf.keras.metrics.MeanAbsoluteError()])
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
-                                                          patience=3,
+                                                          patience=5,
                                                           mode='min')
         model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath='models/checkpoints_LSTM_' + label,
                                                                        save_best_only=True,

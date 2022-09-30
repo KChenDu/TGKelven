@@ -20,8 +20,8 @@ if __name__ == "__main__":
 
     run = [
         'lstm',
-        #'arima',
-        #'narx'
+        'arima',
+        'narx'
     ]
 
     if 'lstm' in run:
@@ -29,18 +29,19 @@ if __name__ == "__main__":
 
         train_df = normalizer.normalize(train_df)
         train_df = add_trigonometric_input(train_df)
-        train_df.plot()
+        # train_df.plot()
         # save_figure(label + '_LSTM_train')
         # plt.show()
 
         val_df = normalizer.normalize(val_df)
         val_df = add_trigonometric_input(val_df)
-        val_df.plot()
+        # val_df.plot()
         # save_figure(label + '_LSTM_val')
         # plt.show()
 
         test_df = normalizer.normalize(test_df)
-        test_df.plot()
+        test_df = add_trigonometric_input(test_df)
+        # test_df.plot()
         # save_figure(label + '_LSTM_test')
         # plt.show()
 
@@ -68,7 +69,7 @@ if __name__ == "__main__":
         # save_figure(label + '_ARIMAX_test')
         # plt.show()
 
-        arima = ARIMA(train_df)
+        arima = ARIMA(train_df, period=12)
 
         result = test_df[[label]]
         result[label + ' (ARIMAX)'] = arima.predict(test_df, output_steps)
@@ -78,7 +79,7 @@ if __name__ == "__main__":
 
     if 'narx' in run:
         xlag = 2
-        ylag = 2
+        ylag = xlag
 
         train_df, val_df, test_df = narx_split(df, output_steps, xlag=xlag)
 
@@ -100,7 +101,7 @@ if __name__ == "__main__":
         # save_figure(label + '_NARX_test')
         # plt.show()
 
-        narmax = NARMAX(train_df, val_df, xlag=xlag, ylag= ylag)
+        narmax = NARMAX(train_df, val_df, xlag=xlag, ylag=ylag)
 
         result = test_df[[label]]
         result[label + ' (NARX)'] = narmax.predict(test_df)
