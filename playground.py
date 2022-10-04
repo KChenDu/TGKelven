@@ -1,56 +1,42 @@
+import yfinance as yf
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from util import normalize
+from pandas_datareader import data as pdr
+from util import *
+from sklearn.ensemble import RandomForestRegressor
+from fireTS.models import NARX
+from sklearn.metrics import mean_absolute_error
 
-df = pd.read_csv('jena_climate_2009_2016.csv')
-# Slice [start:stop:step], starting from index 5 take every 6th record.
-# one measure 6 days / 5 measures a month
-df = df[5::6 * 24 * 7]
-df.index = pd.to_datetime(df.pop('Date Time'), format='%d.%m.%Y %H:%M:%S')
+if __name__ == "__main__":
+    yf.pdr_override()
 
-wv = df['wv (m/s)']
-bad_wv = wv == -9999.0
-wv[bad_wv] = 0.0
+    #mktdata = pdr.get_data_yahoo("ERJ", start="2002-03-21")[['Adj Close']].rename(columns={'Adj Close': 'ERJ'})
+    #mktdata['PBR'] = pdr.get_data_yahoo("PBR", start="2002-03-21")['Adj Close']
+    #mktdata['VALE'] = pdr.get_data_yahoo("VALE")['Adj Close']
+    mktdata = pdr.get_data_yahoo("GS", start="2002-03-21")[['Adj Close']].rename(columns={'Adj Close': 'GS'})
+    mktdata['JPM'] = pdr.get_data_yahoo('JPM', start="2002-03-21")['Adj Close']
+    mktdata['AXP'] = pdr.get_data_yahoo("AXP")['Adj Close']
+    mktdata = mktdata.loc[mktdata.index.day_name() == 'Friday', :]
+    mktdata.plot()
+    plt.show()
 
-max_wv = df['max. wv (m/s)']
-bad_max_wv = max_wv == -9999.0
-max_wv[bad_max_wv] = 0.0
+    label = 'GS'
+    output_steps = 52
+    auto_order = 52
+    exog_order = [52, 52]
 
-wv = df.pop('wv (m/s)')
-max_wv = df.pop('max. wv (m/s)')
+    train_df = mktdata[:-output_steps]
+    result = mktdata[-output_steps * 5:]
 
-# Convert to radians.
-wd_rad = df.pop('wd (deg)') * np.pi / 180
+    normalizer = Normalizer(train_df[label])  # Caution: Use series input, not dataframe
 
-# Calculate the wind x and y components.
-df['Wx'] = wv * np.cos(wd_rad)
-df['Wy'] = wv * np.sin(wd_rad)
-
-# Calculate the max wind x and y components.
-df['max Wx'] = max_wv * np.cos(wd_rad)
-df['max Wy'] = max_wv * np.sin(wd_rad)
-
-# Caution: Change this line when changes frequency
-df = df.resample('1M').mean().interpolate()
-
-# Selection of columns
-df = df[['T (degC)',
-         #'p (mbar)',
-         #'rh (%)',
-         #'VPmax (mbar)',
-         #'VPact (mbar)',
-         #'VPdef (mbar)',
-         #'sh (g/kg)',
-         #'H2OC (mmol/mol)',
-         #'rho (g/m**3)',
-         #'Wx',
-         #'Wy',
-         #'max Wx',
-         #'max Wy',
-         ]]
-
-df = normalize(df)
-
-df[-100:].plot()
-plt.show()
+    narx = NARX(RandomForestRegressor(), auto_order, exog_order)
+    train_x = normalizer.normalize(train_df.loc[:, train_df.columns != label])
+    train_y = normalizer.normalize(train_df[label])
+    narx.fit(train_x, train_y)
+    x = normalizer.normalize(mktdata.loc[:, mktdata.columns != label])
+    y = normalizer.normalize(mktdata[label])
+    output = pd.DataFrame({label + ' (NARX)': narx.predict(x, y, output_steps)[-output_steps:]}, index=mktdata[-output_steps:].index)
+    output = normalizer.denormalize(output)
+    result = result.join(output)
+    result.plot()
+    plt.show()

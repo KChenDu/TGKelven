@@ -37,13 +37,14 @@ if __name__ == "__main__":
 
     # Caution: Change this line when changes frequency
     df = df.resample('1M').mean().interpolate()
+    #df = df.loc[df.index.day_name() == 'Friday', :]
 
     # Selection of columns
     df = df[['T (degC)',
              'p (mbar)',
-             'rh (%)',
-             'VPmax (mbar)',
-             'VPact (mbar)',
+             #'rh (%)',
+             #'VPmax (mbar)',
+             #'VPact (mbar)',
              'rho (g/m**3)',
              #'Wx',
              #'Wy',
@@ -63,8 +64,8 @@ if __name__ == "__main__":
 
     run = [
         'lstm',
-        #'arima',
-        #'narx'
+        'arima',
+        'narx'
     ]
 
     normalizer = Normalizer(df[label][:-output_steps])

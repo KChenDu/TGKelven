@@ -10,13 +10,14 @@ if __name__ == "__main__":
     yf.pdr_override()
 
     mktdata = pdr.get_data_yahoo("ERJ", start="2002-03-21")[['Adj Close']].rename(columns={'Adj Close': 'ERJ'})
-    mktdata = pdr.get_data_yahoo("PBR", start="2002-03-21")[['Adj Close']].rename(columns={'Adj Close': 'PBR'})
+    #mktdata = pdr.get_data_yahoo("PBR", start="2002-03-21")[['Adj Close']].rename(columns={'Adj Close': 'PBR'})
     mktdata['PBR'] = pdr.get_data_yahoo("PBR", start="2002-03-21")['Adj Close']
     mktdata['VALE'] = pdr.get_data_yahoo("VALE")['Adj Close']
 
     mktdata = mktdata.loc[mktdata.index.day_name() == 'Friday', :]
 
-    label = 'PBR'
+    #label = 'PBR'
+    label = 'ERJ'
 
     mktdata.plot()
     save_figure(label)
@@ -43,7 +44,7 @@ if __name__ == "__main__":
         # plt.show()
         test_df = normalizer.normalize(test_df)
 
-        lstm = LSTM(train_df, val_df, input_steps, output_steps, lstm_units=128, label=label)
+        lstm = LSTM(train_df, val_df, input_steps, output_steps, lstm_units=64, label=label, epochs=300)
         lstm.show_history()
 
         lstm_result = result[[label]]  # Caution: Use dataframe input, not series
