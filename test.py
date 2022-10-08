@@ -1,7 +1,8 @@
 from util import *
 from NN.LSTM import LSTM
 from NN.ARIMA import ARIMA
-from NN.NARX import NARMAX
+from fireTS.models import NARX
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error
 
 if __name__ == "__main__":
@@ -19,8 +20,8 @@ if __name__ == "__main__":
     normalizer = Normalizer(df[label][:-output_steps])
 
     run = [
-        'lstm',
-        'arima',
+        #'lstm',
+        #'arima',
         'narx'
     ]
 
@@ -78,34 +79,27 @@ if __name__ == "__main__":
         save_figure(label + '_ARIMAX_prediction')
 
     if 'narx' in run:
-        xlag = 2
-        ylag = xlag
-
-        train_df, val_df, test_df = narx_split(df, output_steps, xlag=xlag)
-
-        train_df = normalizer.normalize(train_df)
+        train_df = df[:-output_steps]
+        train_df = normalize(train_df)
         train_df = add_trigonometric_input(train_df)
         train_df.plot()
         # save_figure(label + '_NARX_train')
         # plt.show()
 
-        val_df = normalizer.normalize(val_df)
-        val_df = add_trigonometric_input(val_df)
-        val_df.plot()
-        # save_figure(label + '_NARX_val')
-        # plt.show()
+        exog_order = []
+        for i in range(len(df.columns) - 1):
+            exog_order.append(input_steps)
 
-        test_df = normalizer.normalize(test_df)
-        test_df = add_trigonometric_input(test_df)
-        test_df.plot()
-        # save_figure(label + '_NARX_test')
-        # plt.show()
+        narx = NARX(RandomForestRegressor(), input_steps, exog_order)
+        narx.fit(train_df.loc[:, train_df.columns != label], train_df[label])
 
-        narmax = NARMAX(train_df, val_df, xlag=xlag, ylag=ylag)
+        x = normalize(df.loc[:, df.columns != label])
+        x = add_trigonometric_input(x)
+        y = normalize(df[label])
 
-        result = test_df[[label]]
-        result[label + ' (NARX)'] = narmax.predict(test_df)
-        result = result.iloc[xlag:]
+        result[label + ' (NARX)'] = narx.predict(normalizer.normalize(df.loc[:, df.columns != label]),
+                                                 normalizer.normalize(df[label]),
+                                                 output_steps)[-output_steps:]
         result.plot()
         plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (NARX)'])}")
         save_figure(label + '_NARX_prediction')

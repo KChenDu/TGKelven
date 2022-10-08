@@ -3,7 +3,8 @@ from pandas_datareader import data as pdr
 from util import *
 from NN.LSTM import LSTM
 from NN.ARIMA import ARIMA
-from NN.NARX import NARMAX
+from fireTS.models import NARX
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error
 
 if __name__ == "__main__":
@@ -13,17 +14,20 @@ if __name__ == "__main__":
     #mktdata = pdr.get_data_yahoo("PBR", start="2002-03-21")[['Adj Close']].rename(columns={'Adj Close': 'PBR'})
     mktdata['PBR'] = pdr.get_data_yahoo("PBR", start="2002-03-21")['Adj Close']
     mktdata['VALE'] = pdr.get_data_yahoo("VALE")['Adj Close']
+    #mktdata = pdr.get_data_yahoo("GS", start="2002-03-21")[['Adj Close']].rename(columns={'Adj Close': 'GS'})
+    #mktdata['JPM'] = pdr.get_data_yahoo('JPM', start="2002-03-21")['Adj Close']
+    #mktdata['AXP'] = pdr.get_data_yahoo("AXP")['Adj Close']
 
     mktdata = mktdata.loc[mktdata.index.day_name() == 'Friday', :]
 
-    #label = 'PBR'
+    #label = 'GS'
     label = 'ERJ'
 
     mktdata.plot()
     save_figure(label)
 
-    input_steps = 96
-    output_steps = 32
+    input_steps = 104
+    output_steps = 52
 
     run = [
         'lstm',
@@ -32,19 +36,21 @@ if __name__ == "__main__":
     ]
 
     normalizer = Normalizer(mktdata[label][:-output_steps])  # Caution: Use series input, not dataframe
-    result = mktdata[[label]][-output_steps * 10:]  # Caution: Use dataframe input, not series
+    result = mktdata[[label]][-output_steps * 5:]  # Caution: Use dataframe input, not series
 
     if 'lstm' in run:
         train_df, val_df, test_df = lstm_split(mktdata, input_steps, output_steps, val_rate=0.20)
-        train_df = normalizer.normalize(train_df)
+        train_df = normalize(train_df)
         # train_df.plot()
         # plt.show()
-        val_df = normalizer.normalize(val_df)
+        val_df = normalize(val_df)
         # val_df.plot()
         # plt.show()
-        test_df = normalizer.normalize(test_df)
+        test_df = normalize(test_df)
+        # test_df.plot()
+        # plt.show()
 
-        lstm = LSTM(train_df, val_df, input_steps, output_steps, lstm_units=64, label=label, epochs=300)
+        lstm = LSTM(train_df, val_df, input_steps, output_steps, lstm_units=256, label=label, epochs=300)
         lstm.show_history()
 
         lstm_result = result[[label]]  # Caution: Use dataframe input, not series
@@ -77,22 +83,23 @@ if __name__ == "__main__":
         result = result.join(output)
 
     if 'narx' in run:
-        xlag = 6
-        ylag = xlag
+        exog_order = []
+        for i in range(len(mktdata.columns) - 1):
+            exog_order.append(input_steps)
 
-        train_df, val_df, test_df = narx_split(mktdata, output_steps, val_rate=0.2, xlag=xlag)
+        train_df = mktdata[:-output_steps]
         train_df = normalizer.normalize(train_df)
         # train_df.plot()
         # plt.show()
-        val_df = normalizer.normalize(val_df)
-        # val_df.plot()
-        # plt.show()
-        test_df = normalizer.normalize(test_df)
 
-        narx = NARMAX(train_df, val_df, label, xlag=xlag, ylag=ylag, polynomial_degree=3)
+        narx = NARX(RandomForestRegressor(), input_steps, exog_order)
 
         narx_result = result[[label]]
-        output = pd.DataFrame({label + ' (NARX)': narx.predict(test_df)[-output_steps:]}, index=test_df[-output_steps:].index)
+        narx.fit(train_df.loc[:, train_df.columns != label], train_df[label])
+        output = pd.DataFrame({label + ' (NARX)': narx.predict(normalizer.normalize(mktdata.loc[:, mktdata.columns != label]),
+                                                               normalizer.normalize(mktdata[label]),
+                                                               output_steps)[-output_steps:]},
+                              index=mktdata[-output_steps:].index)
         output = normalizer.denormalize(output)
         narx_result = narx_result.join(output)
         narx_result.plot()

@@ -1,12 +1,12 @@
 from util import *
 from NN.LSTM import LSTM
 from NN.ARIMA import ARIMA
-from NN.NARX import NARMAX
+from fireTS.models import NARX
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error
 
 
 if __name__ == "__main__":
-
     df = pd.read_csv('jena_climate_2009_2016.csv')
     # Slice [start:stop:step], starting from index 5 take every 6th record.
     # one measure 6 days / 5 measures a month
@@ -64,8 +64,8 @@ if __name__ == "__main__":
 
     run = [
         'lstm',
-        'arima',
-        'narx'
+        #'arima',
+        #'narx'
     ]
 
     normalizer = Normalizer(df[label][:-output_steps])
@@ -88,7 +88,7 @@ if __name__ == "__main__":
         # test_df.plot()
         # plt.show()
 
-        lstm = LSTM(train_df, val_df, input_steps, output_steps, label, 64, 300)
+        lstm = LSTM(train_df, val_df, input_steps, output_steps, label, 32, 200)
         lstm.show_history()
 
         lstm_result = result[[label]]
@@ -125,30 +125,27 @@ if __name__ == "__main__":
         result = result.join(output)
 
     if 'narx' in run:
-        xlag = 4
-        ylag = xlag
-
-        train_df, val_df, test_df = narx_split(df, output_steps, val_rate=0.2, xlag=xlag)
-
+        train_df = df[:-output_steps]
         train_df = normalize(train_df)
         train_df = add_trigonometric_input(train_df)
         # train_df.plot()
         # plt.show()
 
-        val_df = normalize(val_df)
-        val_df = add_trigonometric_input(val_df)
-        # val_df.plot()
-        # plt.show()
+        exog_order = []
+        for i in range(len(train_df.columns) - 1):
+            exog_order.append(input_steps)
 
-        test_df = normalize(test_df)
-        test_df = add_trigonometric_input(test_df)
-        # test_df.plot()
-        # plt.show()
-
-        narmax = NARMAX(train_df, val_df, label, xlag=xlag, ylag=ylag, polynomial_degree=3)
+        narx = NARX(RandomForestRegressor(), input_steps, exog_order)
 
         narx_result = result[[label]]
-        output = pd.DataFrame({label + ' (NARX)': narmax.predict(test_df)[-output_steps:]}, index=test_df[-output_steps:].index)
+        narx.fit(train_df.loc[:, train_df.columns != label], train_df[label])
+        x = normalize(df.loc[:, df.columns != label])
+        x = add_trigonometric_input(x)
+        y = normalize(df[label])
+        output = pd.DataFrame({label + ' (NARX)': narx.predict(x,
+                                                               y,
+                                                               output_steps)[-output_steps:]},
+                              index=df[-output_steps:].index)
         output = normalizer.denormalize(output)
         narx_result = narx_result.join(output)
         narx_result.plot()
