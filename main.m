@@ -17,7 +17,7 @@ testData = mktdata(n - inputSteps + 1 : end, 2 : 4);
 clear mktdata
 
 % build neural network
-net = narxnet(1 : inputSteps, 1 : inputSteps, 32);
+net = narxnet(1 : inputSteps, 1 : inputSteps, 64);
 net.numInputs = 3;
 net.inputConnect = [1 1 1; 0 0 0];
 net.inputs{1}.name = "x1";
