@@ -30,8 +30,8 @@ if __name__ == "__main__":
     output_steps = 52
 
     run = [
-        'lstm',
-        'arima',
+        #'lstm',
+        #'arima',
         'narx'
     ]
 
@@ -93,14 +93,13 @@ if __name__ == "__main__":
         # plt.show()
 
         narx = NARX(RandomForestRegressor(), input_steps, exog_order)
-
-        narx_result = result[[label]]
         narx.fit(train_df.loc[:, train_df.columns != label], train_df[label])
         output = pd.DataFrame({label + ' (NARX)': narx.predict(normalizer.normalize(mktdata.loc[:, mktdata.columns != label]),
                                                                normalizer.normalize(mktdata[label]),
                                                                output_steps)[-output_steps:]},
                               index=mktdata[-output_steps:].index)
         output = normalizer.denormalize(output)
+        narx_result = result[[label]]
         narx_result = narx_result.join(output)
         narx_result.plot()
         plt.title(f"mean absolute error: {mean_absolute_error(narx_result[label][-output_steps:], output)}")

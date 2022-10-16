@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     df = get_test_curve(480, 150, 100)
     df.plot()
-    save_figure(label)
+    plt.show()
 
     fft_analysis(df, samples_per_day=1 / 30.437)
 
@@ -22,7 +22,8 @@ if __name__ == "__main__":
     run = [
         #'lstm',
         #'arima',
-        'narx'
+        'narx',
+        'narxnet'
     ]
 
     if 'lstm' in run:
@@ -32,19 +33,16 @@ if __name__ == "__main__":
         train_df = add_trigonometric_input(train_df)
         # train_df.plot()
         # save_figure(label + '_LSTM_train')
-        # plt.show()
 
         val_df = normalizer.normalize(val_df)
         val_df = add_trigonometric_input(val_df)
         # val_df.plot()
         # save_figure(label + '_LSTM_val')
-        # plt.show()
 
         test_df = normalizer.normalize(test_df)
         test_df = add_trigonometric_input(test_df)
         # test_df.plot()
         # save_figure(label + '_LSTM_test')
-        # plt.show()
 
         lstm = LSTM(train_df, val_df, input_steps, output_steps)
         lstm.show_history()
@@ -60,15 +58,13 @@ if __name__ == "__main__":
 
         train_df = normalizer.normalize(train_df)
         train_df = add_trigonometric_input(train_df)
-        train_df.plot()
+        # train_df.plot()
         # save_figure(label + '_ARIMAX_train')
-        # plt.show()
 
         test_df = normalizer.normalize(test_df)
         test_df = add_trigonometric_input(test_df)
-        test_df.plot()
+        # test_df.plot()
         # save_figure(label + '_ARIMAX_test')
-        # plt.show()
 
         arima = ARIMA(train_df, period=12)
 
@@ -82,24 +78,29 @@ if __name__ == "__main__":
         train_df = df[:-output_steps]
         train_df = normalize(train_df)
         train_df = add_trigonometric_input(train_df)
-        train_df.plot()
-        # save_figure(label + '_NARX_train')
+        # train_df.plot()
         # plt.show()
 
         exog_order = []
-        for i in range(len(df.columns) - 1):
+        for i in range(len(train_df.columns) - 1):
             exog_order.append(input_steps)
 
         narx = NARX(RandomForestRegressor(), input_steps, exog_order)
         narx.fit(train_df.loc[:, train_df.columns != label], train_df[label])
-
-        x = normalize(df.loc[:, df.columns != label])
+        x = df.copy()
         x = add_trigonometric_input(x)
-        y = normalize(df[label])
-
-        result[label + ' (NARX)'] = narx.predict(normalizer.normalize(df.loc[:, df.columns != label]),
-                                                 normalizer.normalize(df[label]),
-                                                 output_steps)[-output_steps:]
+        x.drop(label, axis=1, inplace=True)
+        y = normalizer.normalize(df[[label]])
+        output = pd.DataFrame({label + ' (NARX)': narx.predict(x,
+                                                               y,
+                                                               output_steps)[-output_steps:]},
+                              index=df[-output_steps:].index)
+        output = normalizer.denormalize(output)
+        result = df[-output_steps:]
+        result = result.join(output)
         result.plot()
-        plt.title(f"mean absolute error: {mean_absolute_error(result[label], result[label + ' (NARX)'])}")
+        plt.title(f"mean absolute error: {mean_absolute_error(result[label][-output_steps:], output)}")
         save_figure(label + '_NARX_prediction')
+
+    if 'narxnet' in run:
+        pass

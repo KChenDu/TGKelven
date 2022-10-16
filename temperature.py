@@ -63,9 +63,9 @@ if __name__ == "__main__":
     output_steps = 12
 
     run = [
-        'lstm',
+        #'lstm',
         #'arima',
-        #'narx'
+        'narx'
     ]
 
     normalizer = Normalizer(df[label][:-output_steps])
@@ -136,8 +136,6 @@ if __name__ == "__main__":
             exog_order.append(input_steps)
 
         narx = NARX(RandomForestRegressor(), input_steps, exog_order)
-
-        narx_result = result[[label]]
         narx.fit(train_df.loc[:, train_df.columns != label], train_df[label])
         x = normalize(df.loc[:, df.columns != label])
         x = add_trigonometric_input(x)
@@ -147,6 +145,7 @@ if __name__ == "__main__":
                                                                output_steps)[-output_steps:]},
                               index=df[-output_steps:].index)
         output = normalizer.denormalize(output)
+        narx_result = result[[label]]
         narx_result = narx_result.join(output)
         narx_result.plot()
         plt.title(f"mean absolute error: {mean_absolute_error(narx_result[label][-output_steps:], output)}")
