@@ -11,12 +11,11 @@ if __name__ == "__main__":
     input_steps = 24
     output_steps = 12
 
-    run = [
-        'lstm',
-        'arima',
-        'narx',
-        'narx_multi'
-    ]
+    run = ['lstm',
+           'arima',
+           'narx',
+           'narx_multi'
+           ]
 
     df = get_test_curve(360, 150, 100)
     df.plot()
@@ -24,7 +23,7 @@ if __name__ == "__main__":
     # plt.show()
 
     # fft_analysis(df, samples_per_day=1 / 30.437)
-    normalizer = Normalizer(df[label][:-output_steps])
+    normalizer = Normalizer(df[:-output_steps])
     result = df[[label]][-output_steps * 5:]
 
     if 'lstm' in run:
@@ -45,7 +44,7 @@ if __name__ == "__main__":
         lstm = LSTM(train_df, val_df, input_steps, output_steps, lstm_units=8, epochs=50)
         lstm.show_history()
 
-        output = pd.DataFrame({label + ' (LSTM)': normalizer.denormalize(lstm.predict(test_df))},
+        output = pd.DataFrame({label + ' (LSTM)': normalizer.denormalize(lstm.predict(test_df), label)},
                               index=test_df[-output_steps:].index)
         lstm_result = result[[label]].join(output)
         lstm_result.plot()
@@ -66,7 +65,7 @@ if __name__ == "__main__":
 
         arima = ARIMA(train_df, period=12)
 
-        output = pd.DataFrame({label + ' (ARIMAX)': normalizer.denormalize(arima.predict(test_df, output_steps))},
+        output = pd.DataFrame({label + ' (ARIMAX)': normalizer.denormalize(arima.predict(test_df, output_steps), label)},
                               index=test_df.index)
         arima_result = result[[label]].join(output)
         arima_result.plot()
@@ -85,9 +84,9 @@ if __name__ == "__main__":
 
         narx = NARX(MLPRegressor(8), input_steps, exog_order)
         narx.fit(train_df.loc[:, train_df.columns != label], train_df[label])
-        output = pd.DataFrame({label + ' (NARX)': normalizer.denormalize(narx.predict(add_trigonometric_input(normalizer.normalize(df.loc[:, df.columns != label])),
-                                                                                      normalizer.normalize(df[label]),
-                                                                                      output_steps)[-output_steps:])},
+        y = normalizer.normalize(df[:])
+        x = add_trigonometric_input(y[:]).drop(label, axis=1)
+        output = pd.DataFrame({label + ' (NARX)': normalizer.denormalize(narx.predict(x, y)[-output_steps:], label)},
                               index=df[-output_steps:].index)
         narx_result = result[[label]].join(output)
         narx_result.plot()
@@ -106,8 +105,9 @@ if __name__ == "__main__":
 
         narx = DirectAutoRegressor(MLPRegressor(8), input_steps, exog_order, output_steps)
         narx.fit(train_df.loc[:, train_df.columns != label], train_df[label])
-        output = pd.DataFrame({label + ' (NARXmulti)': normalizer.denormalize(narx.predict(add_trigonometric_input(normalizer.normalize(df.loc[:, df.columns != label])),
-                                                                                      normalizer.normalize(df[label]))[-output_steps:])},
+        y = normalizer.normalize(df[:])
+        x = add_trigonometric_input(y[:]).drop(label, axis=1)
+        output = pd.DataFrame({label + ' (NARXmulti)': normalizer.denormalize(narx.predict(x, y)[-output_steps:], label)},
                               index=df[-output_steps:].index)
         narx_result = result[[label]].join(output)
         narx_result.plot()

@@ -63,15 +63,15 @@ def normalize(df):
 
 
 class Normalizer:
-    def __init__(self, series):
-        self.mean = series.mean()
-        self.std = series.std()
+    def __init__(self, df):
+        self.mean = df.mean()
+        self.std = df.std()
 
     def normalize(self, df):
         return (df - self.mean) / self.std
 
-    def denormalize(self, df):
-        return df * self.std + self.mean
+    def denormalize(self, df, label='y'):
+        return df * self.std[label] + self.mean[label]
 
 
 def add_trigonometric_input(df, period='Y'):
