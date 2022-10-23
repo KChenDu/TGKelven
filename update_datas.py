@@ -24,17 +24,16 @@ mktdata.loc[mktdata.index.is_month_end, :].to_csv("datas/" + assets + "monthly.c
 
 '''GS curve'''
 mktdata = pdr.get_data_yahoo("GS", start="1999-05-07")[['Adj Close']].rename(columns={'Adj Close': 'GS'})
-# mktdata['EX'] = pdr.get_data_yahoo('GS', start="1999-05-07")['Adj Close']
-mktdata['JPM'] = pdr.get_data_yahoo('JPM', start="1999-05-07")['Adj Close']#mktdata['AXP'] = pdr.get_data_yahoo("AXP", start="1999-05-07")['Adj Close']
+#mktdata['JPM'] = pdr.get_data_yahoo('JPM', start="1999-05-07")['Adj Close']#mktdata['AXP'] = pdr.get_data_yahoo("AXP", start="1999-05-07")['Adj Close']
 mktdata['HON'] = pdr.get_data_yahoo("HON", start="1999-05-07")['Adj Close']
 mktdata['AAPL'] = pdr.get_data_yahoo("AAPL", start="1999-05-07")['Adj Close']
 mktdata['MSFT'] = pdr.get_data_yahoo("MSFT", start="1999-05-07")['Adj Close']
 mktdata['CAT'] = pdr.get_data_yahoo("CAT", start="1999-05-07")['Adj Close']
-mktdata['CVX'] = pdr.get_data_yahoo("CVX", start="1999-05-07")['Adj Close']
-mktdata['MCD'] = pdr.get_data_yahoo("MCD", start="1999-05-07")['Adj Close']
+#mktdata['CVX'] = pdr.get_data_yahoo("CVX", start="1999-05-07")['Adj Close']
+#mktdata['MCD'] = pdr.get_data_yahoo("MCD", start="1999-05-07")['Adj Close']
 mktdata['NKE'] = pdr.get_data_yahoo("NKE", start="1999-05-07")['Adj Close']
 mktdata['MMM'] = pdr.get_data_yahoo("MMM", start="1999-05-07")['Adj Close']
-mktdata['TRV'] = pdr.get_data_yahoo("TRV", start="1999-05-07")['Adj Close']
+#mktdata['TRV'] = pdr.get_data_yahoo("TRV", start="1999-05-07")['Adj Close']
 mktdata['DIS'] = pdr.get_data_yahoo("DIS", start="1999-05-07")['Adj Close']
 mktdata['HD'] = pdr.get_data_yahoo("HD", start="1999-05-07")['Adj Close']
 

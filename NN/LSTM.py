@@ -17,7 +17,7 @@ def make_dataset(data, input_steps, output_steps, label, batch_size=32):
 
 
 class LSTM:
-    def __init__(self, train_df, val_df, input_steps, output_steps, label='y', lstm_units=32, epochs=20, batch_size=32):
+    def __init__(self, train_df, val_df, input_steps, output_steps, label='y', lstm_units=32, epochs=20, batch_size=32, patience=5):
         model = tf.keras.Sequential([
             # Shape [batch, time, features] => [batch, lstm_units].
             # Adding more `lstm_units` just overfits more quickly.
@@ -28,7 +28,7 @@ class LSTM:
                       optimizer=tf.keras.optimizers.Adam(),
                       metrics=[tf.keras.metrics.MeanAbsoluteError()])
         early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
-                                                          patience=16,
+                                                          patience=patience,
                                                           mode='min')
         model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath='models/checkpoints_LSTM_' + label,
                                                                        save_best_only=True,
@@ -55,4 +55,3 @@ class LSTM:
 
     def predict(self, test_df):
         return self.model.predict(make_dataset(test_df, self.input_steps, self.output_steps, self.label))[0]
-
