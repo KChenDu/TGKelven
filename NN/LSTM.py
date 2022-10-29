@@ -12,8 +12,7 @@ def make_dataset(data, input_steps, output_steps, label, batch_size=32):
     return tf.keras.utils.timeseries_dataset_from_array(inputs,
                                                         targets,
                                                         input_steps,
-                                                        batch_size=batch_size,
-                                                        shuffle=True)
+                                                        batch_size=batch_size)
 
 
 class LSTM:

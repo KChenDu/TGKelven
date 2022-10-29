@@ -18,7 +18,7 @@ def save_figure(file_name):
     if platform == 'win32':
         plt.savefig('figures/' + file_name + '.png')
     else:
-        plt.savefig('figures/' + file_name + '.eps')
+        plt.savefig('figures/' + file_name + '.png')
     plt.show()
 
 

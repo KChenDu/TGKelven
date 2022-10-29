@@ -8,13 +8,13 @@ from sklearn.metrics import mean_absolute_error
 if __name__ == "__main__":
     # Params
     label = 'y'
-    input_steps = 24
+    input_steps = 12
     output_steps = 12
 
     run = ['lstm',
-           'arima',
-           'narx',
-           'narx_multi'
+           #'arima',
+           #'narx',
+           #'narx_multi'
            ]
 
     df = get_test_curve(360, 150, 100)
@@ -30,7 +30,7 @@ if __name__ == "__main__":
         train_df, val_df, test_df = lstm_split(df, input_steps, output_steps)
 
         train_df = add_trigonometric_input(normalizer.normalize(train_df))
-        # train_df[-60:].plot()
+        train_df[-60:].plot()
         # plt.show()
 
         val_df = add_trigonometric_input(normalizer.normalize(val_df))
@@ -41,7 +41,7 @@ if __name__ == "__main__":
         # test_df.plot()
         # plt.show()
 
-        lstm = LSTM(train_df, val_df, input_steps, output_steps, lstm_units=8, epochs=50)
+        lstm = LSTM(train_df, val_df, input_steps, output_steps, lstm_units=8, epochs=8)
         lstm.show_history()
 
         output = pd.DataFrame({label + ' (LSTM)': normalizer.denormalize(lstm.predict(test_df), label)},
@@ -105,8 +105,8 @@ if __name__ == "__main__":
 
         narx = DirectAutoRegressor(MLPRegressor(8), input_steps, exog_order, output_steps)
         narx.fit(train_df.loc[:, train_df.columns != label], train_df[label])
+        x = add_trigonometric_input(df[:]).drop(label, axis=1)
         y = normalizer.normalize(df[:])
-        x = add_trigonometric_input(y[:]).drop(label, axis=1)
         output = pd.DataFrame({label + ' (NARXmulti)': normalizer.denormalize(narx.predict(x, y)[-output_steps:], label)},
                               index=df[-output_steps:].index)
         narx_result = result[[label]].join(output)
