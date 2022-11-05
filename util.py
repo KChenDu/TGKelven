@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import tensorflow as tf
-
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 def get_test_curve(length=120, mean=0, amplitude=10, period=12, freq='M', noise=0.05):
     x = np.arange(length)
@@ -83,3 +83,7 @@ def add_trigonometric_input(df, period='Y'):
     df['year sin'] = np.sin(phase)
     df['year cos'] = np.cos(phase)
     return df
+
+def print_errors(df, target):
+    print('MAE: ', mean_absolute_error(df, target))
+    print('RMSE: ', np.sqrt(mean_squared_error(df, target)))

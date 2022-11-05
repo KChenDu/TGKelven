@@ -12,9 +12,9 @@ if __name__ == "__main__":
     output_steps = 12
 
     run = ['lstm',
-           #'arima',
-           #'narx',
-           #'narx_multi'
+           'arima',
+           'narx',
+           'narx_multi'
            ]
 
     df = get_test_curve(360, 150, 100)
@@ -30,7 +30,7 @@ if __name__ == "__main__":
         train_df, val_df, test_df = lstm_split(df, input_steps, output_steps)
 
         train_df = add_trigonometric_input(normalizer.normalize(train_df))
-        train_df[-60:].plot()
+        # train_df[-60:].plot()
         # plt.show()
 
         val_df = add_trigonometric_input(normalizer.normalize(val_df))
@@ -41,14 +41,16 @@ if __name__ == "__main__":
         # test_df.plot()
         # plt.show()
 
-        lstm = LSTM(train_df, val_df, input_steps, output_steps, lstm_units=8, epochs=8)
+        lstm = LSTM(train_df, val_df, input_steps, output_steps, lstm_units=8, epochs=50)
         lstm.show_history()
 
+        # output = lstm.predict(test_df)
         output = pd.DataFrame({label + ' (LSTM)': normalizer.denormalize(lstm.predict(test_df), label)},
                               index=test_df[-output_steps:].index)
         lstm_result = result[[label]].join(output)
         lstm_result.plot()
         plt.title(f"mean absolute error: {mean_absolute_error(lstm_result[label][-output_steps:], output)}")
+        print_errors(output, lstm_result[label][-output_steps:])
         save_figure(label + '_LSTM_prediction')
         result = result.join(output)
 
@@ -70,6 +72,7 @@ if __name__ == "__main__":
         arima_result = result[[label]].join(output)
         arima_result.plot()
         plt.title(f"mean absolute error: {mean_absolute_error(arima_result[label][-output_steps:], output)}")
+        print_errors(output, arima_result[label][-output_steps:])
         save_figure(label + '_ARIMAX_prediction')
         result = result.join(output)
 
@@ -91,6 +94,7 @@ if __name__ == "__main__":
         narx_result = result[[label]].join(output)
         narx_result.plot()
         plt.title(f"mean absolute error: {mean_absolute_error(result[label][-output_steps:], output)}")
+        print_errors(output, narx_result[label][-output_steps:])
         save_figure(label + '_NARX_prediction')
         result = result.join(output)
 
@@ -112,6 +116,7 @@ if __name__ == "__main__":
         narx_result = result[[label]].join(output)
         narx_result.plot()
         plt.title(f"mean absolute error: {mean_absolute_error(result[label][-output_steps:], output)}")
+        print_errors(output, narx_result[label][-output_steps:])
         save_figure(label + '_NARXmulti_prediction')
         result = result.join(output)
 

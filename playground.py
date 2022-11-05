@@ -1,10 +1,22 @@
-from pandas_datareader import data as pdr
-from matplotlib import pyplot as plt
+from util import get_test_curve, Normalizer, lstm_split, add_trigonometric_input
+from NN.LSTM import LSTM
+from NN.LSTM import make_dataset
 
-mktdata = pdr.get_data_yahoo("AAPL", start="2002-03-22")[['Adj Close']].rename(columns={'Adj Close': 'AAPL'})
-mktdata['C'] = pdr.get_data_yahoo("C", start="2002-03-22")['Adj Close']
-mktdata['BBY'] = pdr.get_data_yahoo("BBY", start="2002-03-22")['Adj Close']
-mktdata['AAL'] = pdr.get_data_yahoo("BBY", start="2002-03-22")['Adj Close']
+label = 'y'
+input_steps = 12
+output_steps = 12
 
-mktdata.plot()
-plt.show()
+df = get_test_curve(360, 150, 100)
+
+normalizer = Normalizer(df[:-output_steps])
+
+train_df, val_df, test_df = lstm_split(df, input_steps, output_steps)
+
+train_df = add_trigonometric_input(normalizer.normalize(train_df))
+val_df = add_trigonometric_input(normalizer.normalize(val_df))
+test_df = add_trigonometric_input(normalizer.normalize(test_df))
+
+lstm = LSTM(train_df, val_df, input_steps, output_steps, lstm_units=8, epochs=3)
+lstm.show_history()
+
+output = lstm.predict(test_df)

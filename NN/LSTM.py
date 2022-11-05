@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 from util import save_figure
 
 
-def make_dataset(data, input_steps, output_steps, label, batch_size=32):
-    inputs = data[:-output_steps]
+def make_dataset(data, input_steps, label, batch_size=32):
+    inputs = data[:-1]
     targets = np.lib.stride_tricks.sliding_window_view(data[[label]][input_steps:],
-                                                       output_steps,
+                                                       1,
                                                        axis=0).transpose((0, 2, 1))
     return tf.keras.utils.timeseries_dataset_from_array(inputs,
                                                         targets,
@@ -22,7 +22,7 @@ class LSTM:
             # Adding more `lstm_units` just overfits more quickly.
             tf.keras.layers.LSTM(lstm_units),
             # Shape => [batch, out_steps * features].
-            tf.keras.layers.Dense(output_steps)])
+            tf.keras.layers.Dense(1)])
         model.compile(loss=tf.keras.losses.MeanSquaredError(),
                       optimizer=tf.keras.optimizers.Adam(),
                       metrics=[tf.keras.metrics.MeanAbsoluteError()])
@@ -32,9 +32,9 @@ class LSTM:
         model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(filepath='models/checkpoints_LSTM_' + label,
                                                                        save_best_only=True,
                                                                        mode='min')
-        history = model.fit(make_dataset(train_df, input_steps, output_steps, label, batch_size),
+        history = model.fit(make_dataset(train_df, input_steps, label, batch_size),
                             epochs=epochs,
-                            validation_data=make_dataset(val_df, input_steps, output_steps, label, batch_size),
+                            validation_data=make_dataset(val_df, input_steps, label, batch_size),
                             callbacks=[early_stopping, model_checkpoint_callback])
         model.save('models/model_LSTM_' + label)
         self.model = model
@@ -53,4 +53,17 @@ class LSTM:
         save_figure(self.label + '_LSTM_history')
 
     def predict(self, test_df):
-        return self.model.predict(make_dataset(test_df, self.input_steps, self.output_steps, self.label))[0]
+        result = []
+        label = self.label
+        input_steps = self.input_steps
+        model = self.model
+        output_steps = self.output_steps
+        inputs = test_df[:input_steps]
+        for i in range(output_steps):
+            prediction = model.predict(tf.keras.utils.timeseries_dataset_from_array(inputs, None, input_steps, batch_size=1))[0]
+            inputs = inputs[1:]
+            index = test_df.index[input_steps + i]
+            inputs.loc[index] = test_df.loc[index, :]
+            inputs.at[index, label] = prediction
+            result.append(prediction)
+        return np.array(result).transpose()[0]

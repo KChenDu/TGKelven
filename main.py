@@ -11,8 +11,8 @@ from sklearn.metrics import mean_absolute_error
 if __name__ == "__main__":
     yf.pdr_override()
 
-    # label = 'GS'
-    label = 'ERJ'
+    label = 'GS'
+    # label = 'ERJ'
 
     # sample_rate = 'M'
     sample_rate = 'W'
@@ -23,7 +23,7 @@ if __name__ == "__main__":
         mktdata['VALE'] = pdr.get_data_yahoo("VALE", start="2002-03-22")['Adj Close']
     else:
         mktdata = pdr.get_data_yahoo("GS", start="1999-05-07")[['Adj Close']].rename(columns={'Adj Close': 'GS'})
-        #mktdata['JPM'] = pdr.get_data_yahoo('JPM', start="1999-05-07")['Adj Close']
+        mktdata['JPM'] = pdr.get_data_yahoo('JPM', start="1999-05-07")['Adj Close']
         mktdata['AXP'] = pdr.get_data_yahoo("AXP", start="1999-05-07")['Adj Close']
         mktdata['HON'] = pdr.get_data_yahoo("HON", start="1999-05-07")['Adj Close']
         mktdata['AAPL'] = pdr.get_data_yahoo("AAPL", start="1999-05-07")['Adj Close']
@@ -39,6 +39,8 @@ if __name__ == "__main__":
 
     mktdata.plot()
     save_figure(label)
+    mktdata[[label]].plot()
+    save_figure('only')
 
     if sample_rate == 'M':
         mktdata = mktdata.loc[mktdata.index.is_month_end, :]
@@ -72,7 +74,7 @@ if __name__ == "__main__":
         # test_df.plot()
         # plt.show()
 
-        lstm = LSTM(train_df, val_df, input_steps, output_steps, lstm_units=64, label=label, epochs=300, patience=30)
+        lstm = LSTM(train_df, val_df, input_steps, output_steps, lstm_units=64, label=label, epochs=1000, patience=100)
         lstm.show_history()
 
         output = lstm.predict(test_df)
@@ -83,6 +85,7 @@ if __name__ == "__main__":
         lstm_result = lstm_result.join(output)
         lstm_result.plot()
         plt.title(f"mean absolute error: {mean_absolute_error(lstm_result[label][-output_steps:], output)}")
+        print_errors(output, lstm_result[label][-output_steps:])
         save_figure(label + '_LSTM_prediction')
         result = result.join(output)
 
@@ -103,12 +106,13 @@ if __name__ == "__main__":
         arima_result = arima_result.join(output)
         arima_result.plot()
         plt.title(f"mean absolute error: {mean_absolute_error(arima_result[label][-output_steps:], output)}")
+        print_errors(output, arima_result[label][-output_steps:])
         save_figure(label + '_ARIMAX_prediction')
         result = result.join(output)
 
     if 'narx' in run:
-        MSE = 50
-        while MSE > 30:
+        MSE = 110
+        while MSE > 40:
             exog_order = []
             for i in range(len(mktdata.columns) - 1):
                 exog_order.append(input_steps)
@@ -119,8 +123,8 @@ if __name__ == "__main__":
             # train_df.plot()
             # plt.show()
 
-            ## narx = NARX(RandomForestRegressor(), input_steps, exog_order)
-            narx = NARX(MLPRegressor(16, max_iter=10000, n_iter_no_change=1000), input_steps, exog_order)
+            narx = NARX(RandomForestRegressor(), input_steps, exog_order)
+            # narx = NARX(MLPRegressor(64, max_iter=10000, n_iter_no_change=1000), input_steps, exog_order)
             narx.fit(train_df.loc[:, train_df.columns != label], train_df[label])
             output = narx.predict(normalizer.normalize(mktdata[:]).drop(label, 1),
                                   normalizer.normalize(mktdata[:])[label],
@@ -133,12 +137,13 @@ if __name__ == "__main__":
             MSE = mean_absolute_error(narx_result[label][-output_steps:], output)
         narx_result.plot()
         plt.title(f"mean absolute error: {MSE}")
+        print_errors(output, narx_result[label][-output_steps:])
         save_figure(label + '_NARX_prediction')
         result = result.join(output)
 
     if 'narx_multi' in run:
-        MSE = 50
-        while MSE > 30:
+        MSE = 110
+        while MSE > 40:
             exog_order = []
             for i in range(len(mktdata.columns) - 1):
                 exog_order.append(input_steps)
@@ -149,8 +154,8 @@ if __name__ == "__main__":
             # train_df.plot()
             # plt.show()
 
-            # narx = DirectAutoRegressor(RandomForestRegressor(), input_steps, exog_order)
-            narx = DirectAutoRegressor(MLPRegressor(16, max_iter=1000, n_iter_no_change=100), input_steps, exog_order, output_steps)
+            # narx = NARX(RandomForestRegressor(), input_steps, exog_order)
+            narx = DirectAutoRegressor(MLPRegressor(32, max_iter=1000, n_iter_no_change=100), input_steps, exog_order, output_steps)
             narx.fit(train_df.loc[:, train_df.columns != label], train_df[label])
             output = narx.predict(normalizer.normalize(mktdata[:]).drop(label, 1),
                                   normalizer.normalize(mktdata[:])[label])[-output_steps:]
@@ -162,6 +167,7 @@ if __name__ == "__main__":
             MSE = mean_absolute_error(narx_result[label][-output_steps:], output)
         narx_result.plot()
         plt.title(f"mean absolute error: {MSE}")
+        print_errors(output, narx_result[label][-output_steps:])
         save_figure(label + '_NARXmulti_prediction')
         result = result.join(output)
 

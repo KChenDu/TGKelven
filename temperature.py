@@ -53,7 +53,7 @@ if __name__ == "__main__":
     # Selection of columns
     df = df[['T (degC)',
              'p (mbar)',
-             #'rh (%)',
+             'rh (%)',
              #'VPmax (mbar)',
              #'VPact (mbar)',
              'rho (g/m**3)',
@@ -65,6 +65,8 @@ if __name__ == "__main__":
 
     df.plot()
     save_figure(label)
+    df[[label]].plot()
+    save_figure('temperature')
 
     # fft_analysis(df, label, 1 / 30.437)  # Change this line when changes frequency
 
@@ -86,7 +88,7 @@ if __name__ == "__main__":
         # test_df.plot()
         # plt.show()
 
-        lstm = LSTM(train_df, val_df, input_steps, output_steps, label, 16, epochs=1000, patience=100)
+        lstm = LSTM(train_df, val_df, input_steps, output_steps, label, 32, epochs=1000, patience=100)
         lstm.show_history()
 
         output = pd.DataFrame({label + ' (LSTM)': normalizer.denormalize(lstm.predict(test_df), label)},
@@ -94,6 +96,7 @@ if __name__ == "__main__":
         lstm_result = result[[label]].join(output)
         lstm_result.plot()
         plt.title(f"mean absolute error: {mean_absolute_error(lstm_result[label][-output_steps:], output)}")
+        print_errors(lstm_result[label][-output_steps:], output)
         save_figure(label + '_LSTM_prediction')
         result = result.join(output)
 
@@ -115,6 +118,7 @@ if __name__ == "__main__":
         arima_result = result[[label]].join(output)
         arima_result.plot()
         plt.title(f"mean absolute error: {mean_absolute_error(arima_result[label][-output_steps:], output)}")
+        print_errors(arima_result[label][-output_steps:], output)
         save_figure(label + '_ARIMAX_prediction')
         result = result.join(output)
 
@@ -127,7 +131,7 @@ if __name__ == "__main__":
         for i in range(len(train_df.columns) - 1):
             exog_order.append(input_steps)
 
-        narx = NARX(MLPRegressor(16, max_iter=1000, n_iter_no_change=100), input_steps, exog_order)
+        narx = NARX(MLPRegressor(32, max_iter=1000, n_iter_no_change=100), input_steps, exog_order)
         narx.fit(train_df.loc[:, train_df.columns != label], train_df[label])
         x = add_trigonometric_input(normalizer.normalize(df[:]).drop(label, axis=1))
         y = normalizer.normalize(df)[label]
@@ -140,6 +144,7 @@ if __name__ == "__main__":
         narx_result = narx_result.join(output)
         narx_result.plot()
         plt.title(f"mean absolute error: {mean_absolute_error(narx_result[label][-output_steps:], output)}")
+        print_errors(narx_result[label][-output_steps:], output)
         save_figure(label + '_NARX_prediction')
         result = result.join(output)
 
@@ -152,7 +157,7 @@ if __name__ == "__main__":
         for i in range(len(train_df.columns) - 1):
             exog_order.append(input_steps)
 
-        narx = DirectAutoRegressor(MLPRegressor(16, max_iter=1000, n_iter_no_change=100), input_steps, exog_order, output_steps)
+        narx = DirectAutoRegressor(MLPRegressor(32, max_iter=1000, n_iter_no_change=100), input_steps, exog_order, output_steps)
         narx.fit(train_df.loc[:, train_df.columns != label], train_df[label])
         x = add_trigonometric_input(normalizer.normalize(df[:]).drop(label, axis=1))
         y = normalizer.normalize(df)[label]
@@ -163,6 +168,7 @@ if __name__ == "__main__":
         narx_result = result[[label]].join(output)
         narx_result.plot()
         plt.title(f"mean absolute error: {mean_absolute_error(narx_result[label][-output_steps:], output)}")
+        print_errors(narx_result[label][-output_steps:], output)
         save_figure(label + '_NARXmulti_prediction')
         result = result.join(output)
 
